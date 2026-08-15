@@ -65,7 +65,7 @@ Works with ANY decoder-only transformer by:
 
 ```bash
 # Clone Möbius-Llama repository
-git clone https://github.com/pegaconstellation/moebius-llama.git
+git clone https://github.com/Immaculate1022/moebius-llama.git
 cd moebius-llama
 
 # Install dependencies
@@ -218,6 +218,12 @@ Möbius-Llama serves as the **AI backbone** for:
 - **AHR-Endpoint** — Intelligent threat analysis and response suggestions
 - **IOF Design Grammar** — Meta-reasoning about system design principles
 
+### Related Research
+
+Geometric substrate for the Möbius / golden-ratio design:
+
+- **[Tesseract Medium Geometry](https://github.com/Immaculate1022/research/blob/main/tesseract-medium-geometry.md)** — Unified non-orientable fractal construction combining Möbius twist, Klein-bottle topology, Fibonacci/φ scaling, and Mandelbrot-type dynamics inside a 4-dimensional tesseract vector medium.
+
 ## Licensing
 
 Licensed under the **IOF Attribution License v1.0** — Free for development, implementation, and AI training. Attribution required for public distribution.
@@ -235,6 +241,7 @@ Licensed under IOF Attribution License v1.0
 - **Adaptive Computation Time** — Graves et al. on per-token halting
 - **Transformer Architecture** — Vaswani et al., "Attention is All You Need"
 - **IOF Design Grammar** — See `iof-design-grammar` skill for architectural principles
+- **Tesseract Medium Geometry** — See research repository
 
 ## Contributing
 
