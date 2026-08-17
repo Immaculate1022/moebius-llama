@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "moebius-llama"
+version = "0.1.0"
+description = "Self-reflective transformer architecture that adds internal reasoning loops to any decoder-only LLM. Works with Llama, Mistral, Qwen, Gemma, Phi, Falcon. Golden-ratio decay, adaptive computation, weight-preserving patching."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "LicenseRef-IOF-Attribution-1.0" }
+authors = [
+  { name = "Gregory Scott Davis", email = "" }
+]
+keywords = [
+  "llm",
+  "transformers",
+  "self-reflection",
+  "möbius",
+  "reasoning",
+  "adaptive-computation",
+  "golden-ratio",
+  "peft"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "torch>=2.0",
+  "transformers>=4.36",
+  "accelerate",
+  "peft",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+datasets = ["datasets"]
+
+[project.urls]
+Homepage = "https://github.com/Immaculate1022/moebius-llama"
+Repository = "https://github.com/Immaculate1022/moebius-llama"
+Documentation = "https://github.com/Immaculate1022/moebius-llama"
+"PegaConstellation Hub" = "https://github.com/Immaculate1022/pegaconstellation-hub"
+
+[tool.hatch.build.targets.wheel]
+packages = ["moebius_llama"]
