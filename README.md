@@ -5,7 +5,7 @@ description: Möbius-Llama - Self-reflective transformer architecture that adds 
 
 # Möbius-Llama — Self-Reflective Transformers
 
-**Möbius-Llama** is a universal transformer architecture that adds self-reflective reasoning loops to any decoder-only language model. Each layer becomes a loop: Forward → Reflect → Correct → Repeat, with golden-ratio (φ = 1.618...) decay.
+**Möbius-Llama** is an experimental adapter that applies bounded reflection hooks to supported decoder-only transformer layer stacks. It is research code, not a published model, production compatibility guarantee, or benchmarked improvement. The current package preserves the original weights and exposes a small, explicit `patch_any_model` entry point.
 
 > Part of the [PegaConstellation](https://github.com/Immaculate1022/pegaconstellation-hub) / Infinite Optical Fabric ecosystem  
 > Free under the **IOF Attribution License v1.0**
@@ -43,12 +43,7 @@ pip install torch transformers accelerate peft
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-# After `pip install -e .` the package becomes importable:
-# from moebius_llama import patch_any_model
-
-# Temporary compatibility path while the full implementation
-# is modularized:
-from moebius_llama_gift_edition import patch_any_model   # or equivalent entry point
+from moebius_llama import patch_any_model
 
 model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
 tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
@@ -75,19 +70,9 @@ Reflection magnitude decays by φ^-(i+1). Early loops dominate; later loops refi
 ### Universal Adapter
 Preserves original layer implementations, monkey-patches `forward()`, detects RoPE / GQA / ALiBi / etc., and keeps pretrained weights intact.
 
-## Supported Models
+## Current package boundary
 
-| Model | Status | Notes |
-|-------|--------|-------|
-| Llama 2/3 | ✅ Full | RoPE, GQA, KV-cache |
-| Mistral | ✅ Full | Sliding window |
-| Qwen2/3 | ✅ Full | Rotary embeddings |
-| Gemma / Gemma2 | ✅ Full | RMSNorm native |
-| Phi / Phi3 | ✅ Full | Compact architecture |
-| Falcon | ✅ Full | Multi-query attention |
-| GPT-NeoX | ✅ Full | Parallel attention/MLP |
-| MPT | ✅ Full | ALiBi |
-| Mamba | ⚠️ Partial | Hybrid SSM/transformer |
+The package currently discovers common layer containers (`model.layers`, `transformer.h`, `gpt_neox.layers`, and `model.decoder.layers`) and attaches bounded output hooks to a selected fraction of those layers. This is a research scaffold for controlled experiments. It does not establish full compatibility with every model family, preserve generation quality, or demonstrate a reasoning or accuracy advantage.
 
 ## Integration with PegaConstellation
 

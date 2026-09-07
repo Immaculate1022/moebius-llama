@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "moebius-llama"
 version = "0.1.0"
-description = "Self-reflective transformer architecture that adds internal reasoning loops to any decoder-only LLM. Works with Llama, Mistral, Qwen, Gemma, Phi, Falcon. Golden-ratio decay, adaptive computation, weight-preserving patching."
+description = "Experimental bounded reflection hooks for supported decoder-only transformer layer stacks; weight-preserving research scaffold with golden-ratio decay."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "LicenseRef-IOF-Attribution-1.0" }
