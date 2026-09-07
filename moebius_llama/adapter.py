@@ -7,6 +7,7 @@ models unchanged when no supported container is found.
 from __future__ import annotations
 
 from typing import Any
+import math
 
 
 _LAYER_PATHS = (
@@ -14,6 +15,7 @@ _LAYER_PATHS = (
     "transformer.h",
     "gpt_neox.layers",
     "model.decoder.layers",
+    "decoder.layers",
 )
 
 
@@ -33,7 +35,10 @@ def _replace_hidden(output: Any, depth: int, patch_ratio: float) -> Any:
     except ImportError as exc:  # pragma: no cover - dependency is optional at import time
         raise RuntimeError("patch_any_model requires torch to be installed") from exc
 
-    hidden = output[0] if isinstance(output, (tuple, list)) else output
+    if isinstance(output, dict) and "last_hidden_state" in output:
+        hidden = output["last_hidden_state"]
+    else:
+        hidden = output[0] if isinstance(output, (tuple, list)) else output
     if not isinstance(hidden, torch.Tensor) or hidden.ndim < 2:
         return output
 
@@ -42,6 +47,10 @@ def _replace_hidden(output: Any, depth: int, patch_ratio: float) -> Any:
     for index in range(max(1, depth)):
         center = reflected.mean(dim=-1, keepdim=True)
         reflected = reflected + ((center - reflected) * (patch_ratio * phi ** (-(index + 1))))
+    if isinstance(output, dict) and "last_hidden_state" in output:
+        updated = output.copy()
+        updated["last_hidden_state"] = reflected
+        return updated
     updated = (reflected, *output[1:]) if isinstance(output, tuple) else reflected
     if isinstance(output, list):
         updated = [reflected, *output[1:]]
@@ -73,17 +82,25 @@ def patch_any_model(model: Any, depth: int = 3, patch_ratio: float = 0.5) -> Any
         raise ValueError("could not find a supported decoder layer stack")
 
     count = len(layers)
-    selected = max(0, min(count, round(count * patch_ratio)))
+    selected = min(count, math.ceil(count * patch_ratio)) if patch_ratio else 0
     handles = []
     for layer in list(layers)[:selected]:
         handles.append(layer.register_forward_hook(lambda _module, _inputs, output: _replace_hidden(output, depth, patch_ratio)))
 
-    existing = getattr(model, "_moebius_hook_handles", [])
-    for handle in existing:
-        handle.remove()
+    unpatch_model(model)
     model._moebius_hook_handles = handles
     model._moebius_patch_config = {"depth": depth, "patch_ratio": patch_ratio, "layers_patched": selected}
     return model
 
 
-__all__ = ["patch_any_model"]
+def unpatch_model(model: Any) -> Any:
+    """Remove hooks installed by :func:`patch_any_model` and return ``model``."""
+    for handle in getattr(model, "_moebius_hook_handles", []):
+        handle.remove()
+    model._moebius_hook_handles = []
+    if hasattr(model, "_moebius_patch_config"):
+        delattr(model, "_moebius_patch_config")
+    return model
+
+
+__all__ = ["patch_any_model", "unpatch_model"]
