@@ -1,98 +1,92 @@
 ---
 name: moebius-llama
-description: Möbius-Llama - Experimental bounded reflection hooks for supported decoder-only transformer layer stacks. Golden-ratio decay and weight-preserving patching.
+description: Experimental, weight-preserving reflection hooks for supported decoder-only transformer layer stacks.
 ---
 
 # Möbius-Llama — Self-Reflective Transformers
 
-**Möbius-Llama** is an experimental adapter that applies bounded reflection hooks to supported decoder-only transformer layer stacks. It is research code, not a published model, production compatibility guarantee, or benchmarked improvement. The current package preserves the original weights and exposes small, explicit `patch_any_model` and `unpatch_model` entry points.
+**Möbius-Llama** is a small, experimental Python adapter for researchers and developers who want to test bounded reflection hooks on a compatible decoder-only Transformer. It attaches forward hooks to a portion of a model’s decoder layers; it does not train a model or replace its pretrained weights.
 
-> Part of the [PegaConstellation](https://github.com/Immaculate1022/pegaconstellation-hub) / Infinite Optical Fabric ecosystem  
-> Free under the **IOF Attribution License v1.0**
+To try it, install the package from this repository, load a compatible model with Transformers, and call `patch_any_model`. Remove the hooks with `unpatch_model` when your comparison is finished.
 
-## When to Use This
+> **Status: alpha research code.** Möbius-Llama is not a published model, a production compatibility guarantee, or a benchmarked improvement. Evaluate its effect on your own model and workload before relying on it.
 
-- **Enhancing reasoning** — Adding multi-step reflection to existing LLMs without retraining
-- **Building AI assistants** — Creating more thoughtful, self-correcting language models
-- **Improving accuracy** — Reducing hallucinations through internal critique loops
-- **Integrating with supported decoder stacks** — Common Llama, Mistral, Qwen, Gemma, Phi, and Falcon layouts are discoverable, but each model should be tested before use.
+## Quick start
 
-## Installation
-
-### Recommended (editable / development)
+Möbius-Llama requires **Python 3.10+**. Installing the project also installs its declared PyTorch and Hugging Face dependencies.
 
 ```bash
 git clone https://github.com/Immaculate1022/moebius-llama.git
 cd moebius-llama
-pip install -e .
-# or with uv (fast)
-uv pip install -e .
+python -m pip install -e .
 ```
 
-### From source without packaging
-
-```bash
-git clone https://github.com/Immaculate1022/moebius-llama.git
-cd moebius-llama
-pip install torch transformers accelerate peft
-```
-
-## Quick Start
+Choose a decoder-only model that you are permitted to download and whose layer stack is supported (see [Compatibility and limitations](#compatibility-and-limitations)). Then patch it in place:
 
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from moebius_llama import patch_any_model, unpatch_model
 
-model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
-tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+model_id = "<a compatible decoder-only Transformers model>"
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(model_id)
 
+# This returns the same model instance with experimental forward hooks attached.
 model = patch_any_model(model, depth=3, patch_ratio=0.5)
 
-# Remove the experimental hooks when the comparison is complete.
-# unpatch_model(model)
-
-inputs = tokenizer("What is 2+2?", return_tensors="pt")
+inputs = tokenizer("What is 2 + 2?", return_tensors="pt")
 outputs = model.generate(**inputs, max_length=100)
 print(tokenizer.decode(outputs[0]))
+
+# Remove Möbius-Llama hooks before an unpatched comparison or when finished.
+unpatch_model(model)
 ```
 
-## Core Concepts
+## What the adapter does
 
-### Möbius Reflection
-Each selected transformer layer receives a bounded output transformation:
-1. Forward pass
-2. Hidden-state centering
-3. Correction blended with golden-ratio decay
-4. Configurable depth (typically 3)
+For each selected decoder layer, Möbius-Llama registers a forward hook that applies a non-parametric reflection to the layer’s hidden-state output. The hook repeatedly moves values toward their mean over the final hidden dimension. The correction decays by the golden ratio over the requested reflection passes.
 
-### Golden-Ratio Decay
-Reflection magnitude decays by φ^-(i+1). Early loops dominate; later loops refine.
+`depth` sets the number of reflection passes and must be at least `1`. `patch_ratio` must be between `0` and `1`; it selects approximately that fraction of the **first** layers in the discovered stack and also sets the correction scale. For example, a `patch_ratio` of `0.5` selects `ceil(half the layers)` and uses `0.5` as the scale factor.
 
-### Universal Adapter
-Preserves original layer implementations, attaches bounded output hooks, leaves model-specific attention and positional logic untouched, and keeps pretrained weights intact.
+The adapter preserves pretrained weights and returns the same model instance. `unpatch_model(model)` removes hooks installed by Möbius-Llama and clears its recorded patch configuration.
 
-## Current package boundary
+## Compatibility and limitations
 
-The package currently discovers common layer containers (`model.layers`, `transformer.h`, `gpt_neox.layers`, `model.decoder.layers`, and `decoder.layers`) and attaches bounded output hooks to a selected fraction of those layers. Call `unpatch_model(model)` to remove the hooks and restore the original execution path. This is a research scaffold for controlled experiments. It does not establish full compatibility with every model family, preserve generation quality, or demonstrate a reasoning or accuracy advantage. The supported layer paths and output shapes are intentionally conservative, so unsupported model structures fail clearly instead of being patched silently.
+The package looks for the first available layer container at one of these paths:
 
-## Integration with PegaConstellation
+- `model.layers`
+- `transformer.h`
+- `gpt_neox.layers`
+- `model.decoder.layers`
+- `decoder.layers`
 
-Möbius-Llama serves as the AI backbone for:
+This covers several common decoder-only layouts, but it is not a claim of full support for every model family or checkpoint. If no listed layer stack is found, `patch_any_model` raises a `ValueError` rather than patching a model silently. A compatible layer must also produce a tensor, tuple/list whose first item is a tensor, or a dictionary with `last_hidden_state` for the hook to change its output.
 
-- **Aetherius Nexus** — Enhanced research assistant
-- **AHR-Endpoint** — Intelligent threat analysis
-- **IOF Design Grammar** — Meta-reasoning about system design
+Möbius-Llama has no included quality, reasoning, accuracy, or hallucination benchmark. It does not guarantee generation quality, performance, or compatibility with a particular architecture. Treat it as a controlled experiment: test patched and unpatched models with the same configuration, and keep the unpatched baseline.
 
-Related geometry substrate: [Tesseract Medium](https://github.com/Immaculate1022/tesseract-medium)
+## Public API
+
+```python
+from moebius_llama import patch_any_model, unpatch_model
+```
+
+- `patch_any_model(model, depth=3, patch_ratio=0.5)` attaches the experimental hooks and returns `model`.
+- `unpatch_model(model)` removes hooks previously installed by the adapter and returns `model`.
+
+## Project links
+
+- [Repository](https://github.com/Immaculate1022/moebius-llama)
+- [PegaConstellation Hub](https://github.com/Immaculate1022/pegaconstellation-hub), listed in the package metadata.
 
 ## License
 
-**IOF Attribution License v1.0**  
-Free for development, implementation, research, and AI training.  
-Attribution required for public distribution or derivatives:
+Möbius-Llama is licensed under the [IOF Attribution License v1.0](LICENSE).
+
+The license permits use, copying, modification, publication, distribution, sublicensing, and deployment for any purpose. Any public use, derivative work, or implementation must include clear attribution to:
 
 > Möbius-Llama by Gregory Scott Davis, Princeton, NC.
+
+The software is provided **“AS IS,” without warranty of any kind**.
 
 ---
 
